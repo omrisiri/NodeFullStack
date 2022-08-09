@@ -132,7 +132,17 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
           file: Dockerfile-frontend
 
-  deploy:
+  deploy-backend:
+    runs-on: self-hosted
+    needs: [ build-frontend, build-backend ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Deploy backend helm charts to kubernetes
+        id: deploy-kubernetes-backend
+        run: helm upgrade --install backend  --set image.tag=${{ needs.build-backend.outputs.tag }} charts/backend --wait
+
+  deploy-frontend:
     runs-on: self-hosted
     needs: [ build-frontend, build-backend ]
     steps:
@@ -142,8 +152,3 @@ jobs:
       - name: Deploy frontend helm charts to kubernetes
         id: deploy-kubernetes-frontend
         run: helm upgrade --install frontend --set image.tag=${{ needs.build-frontend.outputs.tag }} charts/frontend --wait
-
-      - name: Deploy backend helm charts to kubernetes
-        id: deploy-kubernetes-backend
-        run: helm upgrade --install backend  --set image.tag=${{ needs.build-backend.outputs.tag }} charts/backend --wait
-
