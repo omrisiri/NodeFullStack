@@ -94,7 +94,11 @@ jobs:
 
   deploy:
     runs-on: self-hosted
+    needs: build
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Deploy frontend helm charts to kubernetes
         id: deploy-kubernetes-frontend
         run: helm upgrade --install frontend --set image.tag=${{ steps.meta-frontend.outputs.tags }} charts/frontend
