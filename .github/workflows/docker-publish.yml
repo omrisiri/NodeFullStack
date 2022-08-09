@@ -25,6 +25,8 @@ jobs:
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
       id-token: write
+    outputs:
+      tag:  ${{ steps.meta-backend.outputs.tags }}
 
     steps:
       - name: Checkout repository
@@ -40,24 +42,6 @@ jobs:
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@79abd3f86f79a9d68a23c75a09a9a85889262adf
 
-      - name: Build and push backend Docker image
-        id: build-and-push-backend
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          file: Dockerfile-backend
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta-backend
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
-
 
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
@@ -69,6 +53,26 @@ jobs:
           username: ${{ secrets.AWS_ACCESS_KEY_ID }}
           password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta-backend
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+
+
+      - name: Build and push backend Docker image
+        id: build-and-push-backend
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          file: Dockerfile-backend
+
+
 
 
   build-frontend:
@@ -79,6 +83,8 @@ jobs:
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
       id-token: write
+    outputs:
+      tag:  ${{ steps.meta-frontend.outputs.tags }}
 
     steps:
       - name: Checkout repository
@@ -135,9 +141,9 @@ jobs:
 
       - name: Deploy frontend helm charts to kubernetes
         id: deploy-kubernetes-frontend
-        run: helm upgrade --install frontend --set image.tag=${{ steps.meta-frontend.outputs.tags }} charts/frontend
+        run: helm upgrade --install frontend --set image.tag=${{ needs.build-frontend.outputs.tag }} charts/frontend
 
       - name: Deploy backend helm charts to kubernetes
         id: deploy-kubernetes-backend
-        run: helm upgrade --install backend  --set image.tag=${{ steps.meta-backend.outputs.tags }} charts/backend
+        run: helm upgrade --install backend  --set image.tag=${{ needs.build-backend.outputs.tag }} charts/backend
 
