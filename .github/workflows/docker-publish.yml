@@ -1,4 +1,4 @@
-name: Docker
+name: build Docker and deploy to kubernetes
 
 on:
   schedule:
@@ -91,3 +91,14 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
           file: Dockerfile-backend
+
+      - name: Deploy frontend helm charts to kubernetes
+        id: deploy-kubernetes
+        runs-on: self-hosted
+        run: helm upgrade --install frontend --set image.tag=${{ steps.meta-frontend.outputs.tags }} charts/frontend
+
+      - name: Deploy backend helm charts to kubernetes
+        id: deploy-kubernetes
+        runs-on: self-hosted
+        run: helm upgrade --install backend  --set image.tag=${{ steps.meta-backend.outputs.tags }} charts/backend
+
